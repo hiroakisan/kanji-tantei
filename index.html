@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>かんじ たんてい</title>
+<style>
+  :root{
+    --bg1:#1b2a4a; --bg2:#26406e; --card:#ffffff; --ink:#22324d;
+    --accent:#ffce32; --accent2:#ff7a59; --good:#2ec27e; --bad:#ff7a59;
+    --blue:#3aa0ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    color:var(--ink); min-height:100%;
+    display:flex; flex-direction:column; align-items:center;
+    user-select:none; overflow-x:hidden;
+  }
+  /* ヘッダー */
+  header{
+    width:100%; max-width:560px; padding:14px 18px 6px;
+    display:flex; justify-content:space-between; align-items:center; color:#fff;
+  }
+  .title{font-size:20px; font-weight:bold; letter-spacing:1px;}
+  .title .mag{font-size:22px;}
+  .score{background:rgba(255,255,255,.15); border-radius:20px; padding:6px 14px; font-size:15px; font-weight:bold;}
+  .score b{color:var(--accent);}
+  .hdr-right{display:flex; align-items:center; gap:10px;}
+  .restart{background:rgba(255,255,255,.15); color:#fff; border:none; border-radius:20px;
+    padding:6px 12px; font-size:13px; font-weight:bold;}
+  .restart:active{background:rgba(255,255,255,.3);}
+
+  .wrap{width:100%; max-width:560px; padding:8px 18px 30px; flex:1;}
+
+  /* のこり問題メーター */
+  .progress{margin:2px 0 14px; color:#fff;}
+  .progress-bar{position:relative; height:16px; background:rgba(255,255,255,.18);
+    border-radius:10px; overflow:visible;}
+  .progress-fill{height:100%; width:0%; border-radius:10px;
+    background:linear-gradient(90deg,var(--good),var(--accent)); transition:width .45s ease;}
+  .progress-bar .goal{position:absolute; right:-6px; top:-12px; font-size:20px;}
+  .progress-text{font-size:13px; text-align:right; margin-top:4px; opacity:.95;}
+  .progress-text b{color:var(--accent); font-size:17px;}
+
+  /* あいぼうの たんていけん + ふきだし */
+  .buddy{display:flex; align-items:flex-end; gap:10px; margin:4px 2px 14px;}
+  .dog{width:64px; height:64px; flex:none; image-rendering:pixelated;}
+  .bubble .tag{display:block; margin-top:4px; font-size:13px; color:#0b4ea2; font-weight:bold;}
+  .bubble{
+    background:#fff; border-radius:16px; padding:10px 14px; font-size:15px;
+    color:var(--ink); position:relative; box-shadow:0 4px 14px rgba(0,0,0,.18);
+    line-height:1.4; flex:1;
+  }
+  .bubble:after{content:""; position:absolute; left:-9px; bottom:14px;
+    border:7px solid transparent; border-right-color:#fff;}
+
+  /* 問題カード */
+  .qcard{
+    background:var(--card); border-radius:24px; padding:26px 20px 20px;
+    box-shadow:0 12px 30px rgba(0,0,0,.25); text-align:center; position:relative;
+  }
+  .qlabel{color:#8b97ab; font-size:14px; font-weight:bold; margin-bottom:6px;}
+  .kanji{
+    font-size:120px; font-weight:900; line-height:1.1; color:var(--ink);
+    text-shadow:0 3px 0 #e7ecf5;
+  }
+  .reading-q{font-size:60px; font-weight:900; color:var(--blue); line-height:1.2;}
+  .speak{
+    margin-top:8px; display:inline-flex; align-items:center; gap:6px;
+    background:#eef3fb; border:none; border-radius:20px;
+    padding:8px 16px; font-size:15px; font-weight:bold; color:var(--blue);
+  }
+
+  /* 選択肢 */
+  .choices{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px;}
+  .choice{
+    background:#fff; border:3px solid #e3e9f3; border-radius:18px;
+    padding:18px 8px; font-size:30px; font-weight:900; color:var(--ink);
+    box-shadow:0 4px 0 #d7deeb; transition:transform .05s;
+  }
+  .choice.kanji-choice{font-size:46px; padding:14px 8px;}
+  .choice:active{transform:translateY(3px); box-shadow:0 1px 0 #d7deeb;}
+  .choice.correct{background:var(--good); color:#fff; border-color:var(--good); box-shadow:0 4px 0 #1c9c63;}
+  .choice.wrong{background:var(--bad); color:#fff; border-color:var(--bad); box-shadow:0 4px 0 #d85a3c;}
+  .choice.dim{opacity:.45;}
+
+  /* フィードバック */
+  .feedback{
+    text-align:center; margin-top:18px; min-height:130px;
+  }
+  .verdict{font-size:30px; font-weight:900;}
+  .verdict.ok{color:var(--good);} .verdict.ng{color:var(--accent2);}
+  .example{font-size:18px; color:#ffffff; margin-top:6px;}
+  .example b{color:#1b2a4a; background:var(--accent); padding:1px 7px; border-radius:7px; font-weight:900;}
+  .hint{
+    font-size:15px; color:#5a4500; background:#fff6d6; border:2px solid #ffe28a;
+    border-radius:14px; padding:10px 14px; margin:10px auto 0; max-width:440px;
+    line-height:1.5; text-align:left;
+  }
+  .next-btn{
+    margin-top:12px; background:var(--accent); color:#5a4500; border:none;
+    border-radius:24px; padding:14px 34px; font-size:19px; font-weight:900;
+    box-shadow:0 5px 0 #d9a800;
+  }
+  .next-btn:active{transform:translateY(3px); box-shadow:0 2px 0 #d9a800;}
+
+  /* ごほうび：たんていグッズ */
+  .gadgets{margin-top:22px; color:#fff;}
+  .gadgets h3{font-size:15px; margin:0 0 8px; opacity:.9;}
+  .gadget-row{display:flex; flex-wrap:wrap; gap:8px;}
+  .gadget{
+    width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.12);
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+  }
+  .gadget.got{background:var(--accent); box-shadow:0 0 14px rgba(255,206,50,.6);}
+
+  /* お祝いオーバーレイ */
+  .pop{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(20,30,55,.55); z-index:20; flex-direction:column; color:#fff; text-align:center;
+  }
+  .pop.show{display:flex;}
+  .pop .big{font-size:74px; animation:pop .4s ease;}
+  .pop .msg{font-size:24px; font-weight:900; margin-top:6px;}
+  .pop .sub{font-size:16px; opacity:.9; margin-top:4px;}
+  @keyframes pop{0%{transform:scale(0)} 70%{transform:scale(1.25)} 100%{transform:scale(1)}}
+
+  .confetti{position:fixed; top:-10px; width:10px; height:16px; z-index:25; pointer-events:none;}
+
+  /* グッズ獲得トースト（中断しない通知） */
+  .toast{
+    position:fixed; left:50%; bottom:24px; z-index:40;
+    transform:translateX(-50%) translateY(160%);
+    background:var(--accent); color:#5a4500; font-weight:900; font-size:16px;
+    padding:13px 22px; border-radius:26px; box-shadow:0 8px 22px rgba(0,0,0,.3);
+    transition:transform .35s cubic-bezier(.2,1.3,.4,1); pointer-events:none;
+    max-width:92vw; white-space:nowrap;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0);}
+
+  /* スタート画面 */
+  .start{
+    position:fixed; inset:0; z-index:30; display:none;
+    flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2)); color:#fff; padding:24px;
+    overflow-y:auto;
+  }
+  .start.show{display:flex;}
+  .dog-big{width:120px; height:120px; animation:bob 2s ease-in-out infinite; image-rendering:pixelated;}
+  @keyframes bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)}}
+  .start-title{font-size:32px; font-weight:900; margin-top:10px; letter-spacing:1px;}
+  .start-sub{font-size:16px; line-height:1.5; margin-top:8px; opacity:.92;}
+  .opt-group{margin-top:18px; width:100%; max-width:340px;}
+  .opt-label{font-size:14px; opacity:.85; margin-bottom:8px;}
+  .opt-row{display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+  .opt-row button{
+    background:rgba(255,255,255,.12); color:#fff; border:2px solid rgba(255,255,255,.28);
+    border-radius:20px; padding:10px 16px; font-size:15px; font-weight:bold;
+  }
+  .opt-row button.sel{background:var(--accent); color:#5a4500; border-color:var(--accent);}
+  .start-btn{
+    margin-top:26px; background:var(--accent); color:#5a4500; border:none;
+    border-radius:30px; padding:18px 50px; font-size:24px; font-weight:900;
+    box-shadow:0 6px 0 #d9a800; animation:pulse 1.4s ease-in-out infinite;
+  }
+  .start-btn:active{transform:translateY(3px); box-shadow:0 3px 0 #d9a800;}
+  @keyframes pulse{0%,100%{transform:scale(1)} 50%{transform:scale(1.06)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="title"><span class="mag">🔍</span> かんじ たんてい</div>
+  <div class="hdr-right">
+    <button class="restart" id="sndBtn" aria-label="おんせい">🔊</button>
+    <button class="restart" id="restartBtn">↺ はじめから</button>
+    <div class="score">れんぞく <b id="streak">0</b></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="progress">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progFill"></div>
+      <span class="goal">🏁</span>
+    </div>
+    <div class="progress-text">のこり <b id="remain">30</b> もん</div>
+  </div>
+
+  <div class="buddy">
+    <!-- あいぼうの たんていけん（ドット絵・JSで描画） -->
+    <span id="dogBuddy"></span>
+    <div class="bubble" id="bubble">じけんだ！ なぞを ときあかそう！</div>
+  </div>
+
+  <div class="qcard">
+    <div class="qlabel" id="qlabel">なぞの かんじ</div>
+    <div class="kanji" id="question">？</div>
+    <button class="speak" id="speakBtn">🔊 きく</button>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+
+  <div class="gadgets">
+    <h3>🎖️ あつめた たんていグッズ</h3>
+    <div class="gadget-row" id="gadgetRow"></div>
+  </div>
+</div>
+
+<div class="start show" id="start">
+  <span id="dogBig"></span>
+  <div class="start-title">🔍 かんじ たんてい</div>
+  <div class="start-sub">あいぼうの たんていけんと<br>かんじの じけんを かいけつ しよう！</div>
+
+  <div class="opt-group">
+    <div class="opt-label">📚 がくねん</div>
+    <div class="opt-row" id="gradeOpts">
+      <button data-v="2">小2</button>
+      <button data-v="3">小3</button>
+      <button data-v="mix">ミックス</button>
+    </div>
+  </div>
+
+  <div class="opt-group">
+    <div class="opt-label">📝 もんだいの かたち</div>
+    <div class="opt-row" id="modeOpts">
+      <button data-v="read">かんじ→よみ</button>
+      <button data-v="write">よみ→かんじ</button>
+      <button data-v="mix">ミックス</button>
+    </div>
+  </div>
+
+  <button class="start-btn" id="startBtn">スタート ▶</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="pop" id="pop">
+  <div class="big" id="popBig">🎉</div>
+  <div class="msg" id="popMsg"></div>
+  <div class="sub" id="popSub"></div>
+  <button class="next-btn" id="popBtn">つぎへ →</button>
+</div>
+
+<script>
+/* ===== かん字データ（プロトタイプ：小2・小3 各12字） ===== */
+const KANJI = [
+  /* --- 小2 --- */
+  {grade:2, k:"馬", y:"うま",     ex:"<b>うま</b> に のる",            hint:"よこ向きの うま。下の 4つの点が あし、上が たてがみ。"},
+  {grade:2, k:"鳥", y:"とり",     ex:"<b>とり</b> が とぶ",            hint:"とりの すがた。下の 点々は しっぽの はね。"},
+  {grade:2, k:"魚", y:"さかな",   ex:"<b>さかな</b> を たべる",        hint:"さかなの すがた。下の 点々は ヒレ。"},
+  {grade:2, k:"星", y:"ほし",     ex:"よぞらの <b>ほし</b>",          hint:"「日（たいよう）」＋「生」。そらに 生まれる 光が ほし。"},
+  {grade:2, k:"雪", y:"ゆき",     ex:"<b>ゆき</b> が ふる",            hint:"上の「あめかんむり」が ヒント。そらから ふる なかま。"},
+  {grade:2, k:"海", y:"うみ",     ex:"<b>うみ</b> で およぐ",          hint:"左の「さんずい」＝水。水が いっぱいで うみ。"},
+  {grade:2, k:"池", y:"いけ",     ex:"<b>いけ</b> の こい",            hint:"「さんずい」＝水＋「也」。水の たまりばが いけ。"},
+  {grade:2, k:"牛", y:"うし",     ex:"<b>うし</b> の ちち",            hint:"うしを 前から 見た かたち。上は つの。"},
+  {grade:2, k:"雲", y:"くも",     ex:"しろい <b>くも</b>",            hint:"「あめかんむり」が ヒント。そらに ある なかま。"},
+  {grade:2, k:"岩", y:"いわ",     ex:"大きな <b>いわ</b>",            hint:"「山」＋「石」。山の 大きな 石が いわ。"},
+  {grade:2, k:"船", y:"ふね",     ex:"<b>ふね</b> に のる",            hint:"左の「ふねへん（舟）」が ヒント。水に うかぶ。"},
+  {grade:2, k:"顔", y:"かお",     ex:"<b>かお</b> を あらう",          hint:"右の「頁（おおがい）」は あたま・かおの なかま。"},
+  /* --- 小3 --- */
+  {grade:3, k:"橋", y:"はし",     ex:"川に <b>はし</b> を かける",      hint:"左の「木」＝木で つくった、川を わたる はし。"},
+  {grade:3, k:"駅", y:"えき",     ex:"<b>えき</b> で でんしゃを まつ",  hint:"左の「馬」＝むかしは 馬で 行き来した ところ。"},
+  {grade:3, k:"鼻", y:"はな",     ex:"<b>はな</b> が かゆい",          hint:"上の「自」は じぶんの かおの まん中＝はなを さす かたち。"},
+  {grade:3, k:"島", y:"しま",     ex:"ふねで <b>しま</b> へ いく",      hint:"「鳥」＋「山」。海の とりが とまる 山が しま。"},
+  {grade:3, k:"湖", y:"みずうみ", ex:"<b>みずうみ</b> で さかなつり",   hint:"「さんずい」＝水。大きな 水たまりが みずうみ。"},
+  {grade:3, k:"畑", y:"はたけ",   ex:"<b>はたけ</b> で やさいを そだてる", hint:"「火」＋「田」。火で やいて つくった はたけ。"},
+  {grade:3, k:"港", y:"みなと",   ex:"<b>みなと</b> に ふねが とまる",  hint:"「さんずい」＝水。水べの ふねが とまる ところ。"},
+  {grade:3, k:"旅", y:"たび",     ex:"<b>たび</b> に でる",            hint:"はたを 持って 人が すすむ イメージ＝たび。"},
+  {grade:3, k:"葉", y:"は",       ex:"木の <b>は</b> が おちる",        hint:"上の「くさかんむり」と 下の「木」。木に しげる は。"},
+  {grade:3, k:"庭", y:"にわ",     ex:"<b>にわ</b> で あそぶ",          hint:"「まだれ」＝やねの ある いえ。いえの しきちが にわ。"},
+  {grade:3, k:"横", y:"よこ",     ex:"<b>よこ</b> に ならぶ",          hint:"左の「木」が ヒント。木を よこに たおした イメージ。"},
+  {grade:3, k:"君", y:"きみ",     ex:"<b>きみ</b> の なまえ",          hint:"下の「口」で よびかける あいて＝きみ。"},
+];
+const GADGETS = ["🔍","🔦","🧭","🗝️","🔬","🗺️","🕯️","📒","🎖️","🏅","🧩","⭐"];
+
+/* ===== あいぼうの たんていけん（ドット絵・複数種類） ===== */
+/* たれ耳タイプ（いぬ） */
+const ART_FLOPPY = [
+  "......HHHH......",
+  ".....HHHHHH.....",
+  "....HHHHHHHH....",
+  "...HHHHHHHHHH...",
+  "..hhhhhhhhhhhh..",
+  ".DDBBBBBBBBBBDD.",
+  ".DDBBBBBBBBBBDD.",
+  ".DDBBEBBBBEBBDD.",
+  ".DDBBBBBBBBBBDD.",
+  ".BBBBSSSSSSBBBB.",
+  ".BBBBSSNNSSBBBB.",
+  ".BBBBSSSSSSBBBB.",
+  "..BBBBBBBBBBBB..",
+  "...BBBBBBBBBB...",
+  ".....BBBBBB.....",
+  "................",
+];
+/* とがり耳タイプ（ねこ・きつね） */
+const ART_UP = [
+  "...D........D...",
+  "..DDD..HH..DDD..",
+  ".DDDD.HHHH.DDDD.",
+  ".DDDDhhhhhhDDDD.",
+  ".BBBBBBBBBBBBBB.",
+  ".BBBBBBBBBBBBBB.",
+  ".BBBBEBBBBEBBBB.",
+  ".BBBBBBBBBBBBBB.",
+  ".BBBBSSSSSSBBBB.",
+  ".BBBBSSNNSSBBBB.",
+  ".BBBBSSSSSSBBBB.",
+  "..BBBBBBBBBBBB..",
+  "...BBBBBBBBBB...",
+  "....BBBBBBBB....",
+  ".....BBBBBB.....",
+  "................",
+];
+const DOG_VARIANTS = [
+  {name:"ちゃいぬ たんてい", art:ART_FLOPPY, c:{H:"#7d8aa0",h:"#566075",B:"#d99a55",D:"#8a5a2b",S:"#f6e3c5",N:"#2c2018",E:"#22324d"}},
+  {name:"はいいろ たんてい", art:ART_FLOPPY, c:{H:"#b07a45",h:"#8a5a2b",B:"#aab2c0",D:"#7c8493",S:"#e6eaf0",N:"#2c2018",E:"#22324d"}},
+  {name:"くろいぬ たんてい", art:ART_FLOPPY, c:{H:"#e0b400",h:"#b08c00",B:"#5a5a6e",D:"#3e3e4e",S:"#cfcfe0",N:"#1a1a22",E:"#ffce32"}},
+  {name:"ねこ たんてい",     art:ART_UP,     c:{H:"#5aa86e",h:"#3f7d53",B:"#e8923a",D:"#c06f22",S:"#ffe1b0",N:"#2c2018",E:"#22324d"}},
+  {name:"しろぎつね たんてい",art:ART_UP,     c:{H:"#d65a5a",h:"#a83f3f",B:"#eef0f4",D:"#c9cdd6",S:"#ffffff",N:"#3a2a2a",E:"#22324d"}},
+];
+function dogSVG(cls, v){
+  let rects = "";
+  v.art.forEach((row,y)=>{
+    for(let x=0;x<row.length;x++){
+      const col = v.c[row[x]];
+      if(col) rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${col}"/>`;
+    }
+  });
+  return `<svg class="${cls}" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-label="たんていけん">${rects}</svg>`;
+}
+function applyDog(){
+  const v = DOG_VARIANTS[currentDogIdx];
+  $("dogBuddy").innerHTML = dogSVG("dog", v);
+  $("dogBig").innerHTML   = dogSVG("dog-big", v);
+}
+function pickNewDog(){   // 前回と違う あいぼうを えらぶ
+  let idx = Math.floor(Math.random()*DOG_VARIANTS.length);
+  if(DOG_VARIANTS.length>1 && idx===currentDogIdx) idx=(idx+1)%DOG_VARIANTS.length;
+  currentDogIdx = idx;
+  applyDog();
+}
+
+/* ===== セリフ（ランダム） ===== */
+const LINE = {
+  q:  ["じけんだ！ なぞを ときあかそう！", "つぎの てがかりは これだ！",
+       "よーく かんさつ だ、たんていくん！", "キミなら きっと とけるはず！",
+       "ふむ… これは おもしろい じけん だ。", "しんちょうに すいり しよう！"],
+  ok: ["おみごと！ じけん かいけつ！", "さすが めいたんてい！",
+       "ずばり せいかい！ かんぺき だ！", "その ちょうし！ つぎ いこう！",
+       "キミの すいり、大あたり！", "なぞが ひとつ とけたね！"],
+  ng: ["おしい！ もういちど かくにん だ。", "うーん、もう一歩！ ヒントを 見てみよう。",
+       "だいじょうぶ、まちがいは たんていの ともだち！", "つぎは いけるさ。おぼえかたを チェック！"],
+};
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function kanjiTag(){
+  const list = activeList();
+  const x = list[Math.floor(Math.random()*list.length)];
+  return `『${x.k}（${x.y}）』`;
+}
+function setBubble(kind){
+  let line = pick(LINE[kind]);
+  if(kind==="q" && Math.random()<0.4){
+    line += `<span class="tag">きょうの かんじ：${kanjiTag()}</span>`;
+  }
+  $("bubble").innerHTML = line;
+}
+
+/* ===== 状態（端末内に保存） ===== */
+const save = JSON.parse(localStorage.getItem("kanji_tantei")||"{}");
+let gradeSel = save.gradeSel||"3";           // "2" | "3" | "mix"（既定 小3／設定だけ保存）
+let modeSel  = save.modeSel||"mix";          // "read"(漢字→よみ) | "write"(よみ→漢字) | "mix"
+let soundOn  = save.soundOn!==false;         // 音声オン/オフ（既定オン）
+let currentDogIdx = 0;                        // いま表示中の あいぼう
+/* 下記は 1セッションごとに リセット（保存しない） */
+let streak = 0;          // れんぞく正解
+let solvedCount = 0;     // 正解の数（3問ごとにグッズGET）
+let gotGadgets = 0;      // あつめた探偵グッズ
+let wrongQueue = [];     // 間違えた問題を優先再出題
+let current = null;
+
+/* 1セッション = 30問 */
+const Q_TOTAL = 30;
+let qDone = 0;            // この回で答えた数
+let sessionCorrect = 0;  // この回の正解数
+
+function updateProgress(){
+  const remain = Math.max(0, Q_TOTAL - qDone);
+  $("remain").textContent = remain;
+  $("progFill").style.width = (qDone / Q_TOTAL * 100) + "%";
+}
+
+const $ = id => document.getElementById(id);
+function persist(){   // 保存するのは 設定（学年・モード・音声）だけ
+  localStorage.setItem("kanji_tantei", JSON.stringify({gradeSel,modeSel,soundOn}));
+}
+/* セッションを まっさらに もどす */
+function resetSession(){
+  qDone = 0; sessionCorrect = 0;
+  streak = 0; solvedCount = 0; gotGadgets = 0;
+  wrongQueue = [];
+  pickNewDog();                // リセットのたびに あいぼうが かわる
+  updateProgress();
+  renderGadgets();
+  $("streak").textContent = streak;
+}
+
+/* ===== 出題 ===== */
+function activeList(){
+  if(gradeSel==="2") return KANJI.filter(x=>x.grade===2);
+  if(gradeSel==="3") return KANJI.filter(x=>x.grade===3);
+  return KANJI;
+}
+function pickQuestion(){
+  const list = activeList();
+  if(wrongQueue.length && Math.random()<0.5) return wrongQueue.shift();
+  return list[Math.floor(Math.random()*list.length)];
+}
+function resolveMode(){
+  return modeSel==="mix" ? (Math.random()<0.5 ? "read" : "write") : modeSel;
+}
+function makeChoices(correct, mode){
+  const key  = mode==="read" ? "y" : "k";          // 選択肢が「よみ」か「漢字」か
+  const pool = [...new Set(activeList().map(x=>x[key]))];
+  const set  = new Set([correct[key]]);
+  while(set.size<4 && set.size<pool.length){
+    set.add(pool[Math.floor(Math.random()*pool.length)]);
+  }
+  return [...set].sort(()=>Math.random()-0.5);
+}
+function render(){
+  current = pickQuestion();
+  const mode = resolveMode();
+  const q = $("question");
+  if(mode==="read"){
+    $("qlabel").textContent = "この かんじ、なんて よむ？";
+    q.className = "kanji"; q.textContent = current.k;
+  }else{
+    $("qlabel").textContent = "この よみの かんじは どれ？";
+    q.className = "reading-q"; q.textContent = current.y;
+  }
+  setBubble("q");
+  const ansKey = mode==="read" ? current.y : current.k;
+  $("feedback").innerHTML = "";
+  const box = $("choices"); box.innerHTML = "";
+  makeChoices(current, mode).forEach(opt=>{
+    const b = document.createElement("button");
+    b.className = "choice" + (mode==="write" ? " kanji-choice" : "");
+    b.textContent = opt;
+    b.onclick = ()=>answer(b, opt, ansKey);
+    box.appendChild(b);
+  });
+  $("streak").textContent = streak;
+  speak(current.y);          // 出題のたびに よみを 1かい よみあげる（耳からのヒント）
+}
+
+/* ===== 解答 ===== */
+function answer(btn, chosen, ansKey){
+  [...document.querySelectorAll(".choice")].forEach(c=>{
+    c.onclick=null;
+    if(c.textContent===ansKey) c.classList.add("correct");
+    else c.classList.add("dim");
+  });
+  const ok = chosen===ansKey;
+  qDone++;                       // 答えた問題数をカウント
+  if(ok){
+    streak++; solvedCount++; sessionCorrect++;
+    setBubble("ok");
+    speak(current.y);
+    feedback(true);
+    if(solvedCount % 3 === 0) setTimeout(awardGadget, 500);
+  }else{
+    btn.classList.remove("dim"); btn.classList.add("wrong");
+    streak = 0;
+    wrongQueue.push(current);
+    setBubble("ng");
+    feedback(false);
+  }
+  updateProgress();
+  $("streak").textContent = streak;
+  persist();
+}
+
+/* 次へ：30問おわったら けっか画面 */
+function next(){
+  if(qDone >= Q_TOTAL) finishSession();
+  else render();
+}
+
+function feedback(ok){
+  const fb = $("feedback");
+  fb.innerHTML =
+    `<div class="verdict ${ok?'ok':'ng'}">${ok?'◎ せいかい！':'おしい！'}</div>
+     <div class="example"><b>${current.k}</b>（${current.y}）… ${current.ex}</div>
+     <div class="hint">💡 おぼえかた：${current.hint}</div>
+     <button class="next-btn" id="nextBtn">${qDone>=Q_TOTAL ? 'けっか を みる →' : 'つぎの じけん →'}</button>`;
+  $("nextBtn").onclick = next;
+}
+
+/* ===== ごほうび：たんていグッズ ===== */
+let toastTimer = null;
+function showToast(text){
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 1900);
+}
+function awardGadget(){
+  if(gotGadgets < GADGETS.length) gotGadgets++;
+  renderGadgets();
+  const g = GADGETS[(gotGadgets-1+GADGETS.length)%GADGETS.length];
+  showToast("🎖️ たんていグッズ ゲット！ "+g);   // 自動で消える＝中断しない
+  burstConfetti();
+}
+function renderGadgets(){
+  const row = $("gadgetRow"); row.innerHTML="";
+  GADGETS.forEach((g,i)=>{
+    const d=document.createElement("div");
+    d.className="gadget"+(i<gotGadgets?" got":"");
+    d.textContent = i<gotGadgets ? g : "？";
+    row.appendChild(d);
+  });
+}
+
+/* ===== お祝い演出 ===== */
+function showPop(big,msg,sub){
+  $("popBig").textContent=big; $("popMsg").textContent=msg; $("popSub").textContent=sub;
+  $("pop").classList.add("show");
+}
+function closePop(){ $("pop").classList.remove("show"); }
+$("popBtn").onclick = closePop;
+
+/* ===== けっか画面（30問やり遂げた！） ===== */
+function finishSession(){
+  showPop("🏆", "じけん ぜんぶ かいけつ！", `${Q_TOTAL}もんちゅう ${sessionCorrect}もん せいかい！`);
+  $("popBtn").textContent = "スタートに もどる →";
+  $("popBtn").onclick = ()=>{
+    closePop();
+    $("popBtn").textContent = "つぎへ →";
+    $("popBtn").onclick = closePop;
+    $("start").classList.add("show");
+  };
+  burstConfetti();
+  setTimeout(burstConfetti, 600);
+}
+
+function burstConfetti(){
+  const colors=["#ffce32","#ff7a59","#3aa0ff","#2ec27e","#fff"];
+  for(let i=0;i<24;i++){
+    const c=document.createElement("div");
+    c.className="confetti";
+    c.style.left=Math.random()*100+"vw";
+    c.style.background=colors[i%colors.length];
+    c.style.transform="rotate("+Math.random()*360+"deg)";
+    document.body.appendChild(c);
+    const fall=900+Math.random()*700;
+    c.animate(
+      [{top:"-10px",opacity:1},{top:"100vh",opacity:.9}],
+      {duration:fall,easing:"ease-in"}
+    ).onfinish=()=>c.remove();
+  }
+}
+
+/* ===== 音声（ブラウザ標準・無料・通信なし） ===== */
+function speak(text){
+  if(!soundOn) return;
+  if(!("speechSynthesis" in window)) return;
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ja-JP"; u.rate=0.9;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+$("speakBtn").onclick = ()=>speak(current.y);
+
+/* ===== スタート画面の せってい ===== */
+function wireOpts(rowId, current, setter){
+  const row = $(rowId);
+  row.querySelectorAll("button").forEach(b=>{
+    if(b.dataset.v===current) b.classList.add("sel");
+    b.onclick = ()=>{
+      row.querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel");
+      setter(b.dataset.v);
+    };
+  });
+}
+wireOpts("gradeOpts", gradeSel, v=>{ gradeSel=v; persist(); });
+wireOpts("modeOpts",  modeSel,  v=>{ modeSel=v;  persist(); });
+
+/* はじめから：いつでもスタート画面へ もどれる（投げ出し防止の にげ道） */
+$("restartBtn").onclick = ()=>{
+  closePop();
+  resetSession();              // れんぞく・グッズ・メーターを すぐ まっさらに
+  $("start").classList.add("show");
+};
+
+/* 音声オン/オフ */
+function updateSnd(){ $("sndBtn").textContent = soundOn ? "🔊" : "🔇"; }
+$("sndBtn").onclick = ()=>{
+  soundOn = !soundOn; updateSnd(); persist();
+  if(soundOn && current) speak(current.y);
+};
+
+/* ===== 起動 ===== */
+pickNewDog();        // 最初の あいぼうを ランダムに
+updateSnd();
+renderGadgets();
+$("startBtn").onclick = ()=>{
+  $("start").classList.remove("show");
+  resetSession();              // セッション（30問・れんぞく・グッズ）をリセット
+  // タップ操作のなかで音声を一度初期化 → 1問目から読み上げできる
+  if("speechSynthesis" in window){
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+  }
+  render();
+};
+</script>
+</body>
+</html>
